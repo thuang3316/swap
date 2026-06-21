@@ -1,0 +1,23 @@
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import { errorHandler } from './middleware/errorHandler.js';
+
+// Build the Express app. Exported (not listened) so it can run both as a
+// Vercel serverless handler (api/index.js) and a local dev server (dev.js).
+// See .claude/skills/express-vercel-api.
+export function createApp() {
+  const app = express();
+
+  app.use(express.json());
+  app.use(cookieParser());
+
+  // Health check — confirms the API is reachable.
+  app.get('/api/health', (req, res) => {
+    res.json({ ok: true, ts: new Date().toISOString() });
+  });
+
+  // Feature routers mount here as they are built (auth, items, requests).
+
+  app.use(errorHandler); // must be last
+  return app;
+}

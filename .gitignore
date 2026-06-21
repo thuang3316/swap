@@ -11,6 +11,17 @@ node_modules
 dist
 dist-ssr
 *.local
+guides
+screenshots
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Claude — keep skills/agents, ignore local scratch & personal settings
+.claude/agent-memory/
+.claude/settings.local.json
 
 # Editor directories and files
 .vscode/*

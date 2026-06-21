@@ -8,4 +8,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    // Forward API calls to the local Express dev server (server/dev.js).
+    // In production on Vercel, /api/* is served by api/index.js instead.
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
 })

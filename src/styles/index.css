@@ -1,0 +1,84 @@
+/* Swap Board — design system. See DESIGN.md for the rationale. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Palette — deliberately not the cream+terracotta / black+acid defaults. */
+  --color-ink: #1c1b29;          /* primary text + dark surfaces */
+  --color-ink-soft: #45435a;     /* secondary text */
+  --color-paper: #f3f2ef;        /* page background (neutral warm, not cream) */
+  --color-surface: #ffffff;      /* cards */
+  --color-line: #e4e2dc;         /* hairlines / borders */
+
+  --color-grape: #5a3fe0;        /* brand + primary CTA */
+  --color-grape-bright: #7b5cff; /* hover */
+  --color-grape-ink: #2b1d73;    /* text on light grape */
+
+  --color-kraft: #ca9f62;        /* the price-tag (manila) */
+  --color-kraft-deep: #a87f45;
+  --color-sold: #d8412f;         /* SOLD stamp — used sparingly */
+
+  /* Type roles */
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+
+  --radius-card: 1rem;
+}
+
+@layer base {
+  html { font-family: var(--font-sans); color: var(--color-ink); }
+  body { background: var(--color-paper); }
+  h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; }
+
+  /* Quality floor: visible keyboard focus + reduced motion. */
+  :focus-visible { outline: 2px solid var(--color-grape); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+@layer components {
+  /* Eyebrow / utility label — mono, tracked, the classifieds voice. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+    font-family: var(--font-display); font-weight: 700;
+    padding: 0.65rem 1.25rem; border-radius: 999px;
+    transition: transform 0.12s ease, background-color 0.12s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--color-grape); color: #fff; }
+  .btn-primary:hover { background: var(--color-grape-bright); }
+  .btn-ghost { background: transparent; color: var(--color-ink); border: 1.5px solid var(--color-ink); }
+  .btn-ghost:hover { background: var(--color-ink); color: var(--color-paper); }
+
+  /* Signature element: the kraft price tag with a punch hole. */
+  .price-tag {
+    position: relative;
+    display: inline-flex; align-items: center;
+    font-family: var(--font-mono); font-weight: 700;
+    color: var(--color-ink);
+    background: var(--color-kraft);
+    padding: 0.3rem 0.7rem 0.3rem 1.4rem;
+    border-radius: 0.3rem;
+    box-shadow: inset 0 0 0 1px var(--color-kraft-deep);
+  }
+  /* the punch hole */
+  .price-tag::before {
+    content: ""; position: absolute; left: 0.5rem; top: 50%; transform: translateY(-50%);
+    width: 0.5rem; height: 0.5rem; border-radius: 999px;
+    background: var(--color-surface); box-shadow: inset 0 0 0 1.5px var(--color-kraft-deep);
+  }
+  /* negotiable variant — stamped, no number */
+  .price-tag--neg { color: var(--color-grape-ink); }
+}
