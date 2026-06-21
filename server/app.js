@@ -1,6 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler.js';
+import { sql } from './db.js';
 
 // Build the Express app. Exported (not listened) so it can run both as a
 // Vercel serverless handler (api/index.js) and a local dev server (dev.js).
@@ -14,6 +15,17 @@ export function createApp() {
   // Health check — confirms the API is reachable.
   app.get('/api/health', (req, res) => {
     res.json({ ok: true, ts: new Date().toISOString() });
+  });
+
+  // DB health check — confirms the Neon connection + schema are reachable.
+  app.get('/api/health/db', async (req, res, next) => {
+    try {
+      const [{ now }] = await sql`SELECT now()`;
+      const [{ count }] = await sql`SELECT count(*)::int AS count FROM items`;
+      res.json({ ok: true, now, items: count });
+    } catch (err) {
+      next(err);
+    }
   });
 
   // Feature routers mount here as they are built (auth, items, requests).
