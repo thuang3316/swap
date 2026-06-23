@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { handleUpload } from '@vercel/blob/client';
+import express, { Router } from 'express';
+import { put } from '@vercel/blob';
 import { sql } from '../db.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 
@@ -10,6 +10,9 @@ const CATEGORIES = new Set([
   'furniture', 'electronics', 'bikes', 'photo', 'music',
   'clothing', 'books', 'home', 'sports', 'toys', 'other',
 ]);
+
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024; // 4 MB — stays under Vercel's serverless body limit
 
 const SORTS = {
   newest: 'i.created_at DESC',
@@ -70,25 +73,29 @@ router.get('/:id', optionalAuth, asyncH(async (req, res) => {
   });
 }));
 
-// POST /api/items/upload — issues a short-lived token so the browser can upload
-// the image directly to Vercel Blob (bypasses the serverless body-size limit).
-// See .claude/skills (Step 4) / Vercel Blob client-upload docs.
-router.post('/upload', requireAuth, asyncH(async (req, res) => {
+// POST /api/items/upload — the browser POSTs the raw image bytes here and we
+// upload to Vercel Blob from the server with put(). The server SDK reads
+// BLOB_READ_WRITE_TOKEN from the environment and works the same in local dev and
+// on Vercel. (We previously used the @vercel/blob/client client-upload flow, but
+// upload() hung after fetching the client token in this Vite SPA — never issuing
+// the blob PUT — so the form stuck on "Saving…". Server-side put() is simpler and
+// reliable; the only cost is the file transiting the function, fine for one small
+// photo under Vercel's ~4.5 MB body limit.)
+router.post('/upload', requireAuth, express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }), asyncH(async (req, res) => {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return res.status(503).json({ error: 'Image uploads are not configured yet (no Blob store).' });
   }
-  const result = await handleUpload({
-    request: req,
-    body: req.body,
-    onBeforeGenerateToken: async () => ({
-      allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      maximumSizeInBytes: 8 * 1024 * 1024,
-      addRandomSuffix: true,
-      tokenPayload: JSON.stringify({ userId: req.user.id }),
-    }),
-    onUploadCompleted: async () => { /* no-op; we read the URL client-side */ },
-  });
-  res.json(result);
+  const contentType = (req.headers['content-type'] || '').split(';')[0].trim();
+  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+    return res.status(400).json({ error: 'Only JPEG, PNG, WebP, or GIF images are allowed' });
+  }
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    return res.status(400).json({ error: 'No image received' });
+  }
+  // Sanitize the client-supplied filename; addRandomSuffix avoids collisions.
+  const filename = String(req.query.filename || 'photo').replace(/[^\w.\-]/g, '_').slice(0, 100) || 'photo';
+  const blob = await put(filename, req.body, { access: 'public', addRandomSuffix: true, contentType });
+  res.json({ url: blob.url });
 }));
 
 // POST /api/items — create a listing (auth required; owner = current user).

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { upload } from '@vercel/blob/client';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { CATEGORIES } from '../lib/categories.js';
@@ -52,6 +51,12 @@ export function Create() {
   const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const onFile = (e) => {
     const f = e.target.files?.[0] || null;
+    if (f && f.size > 4 * 1024 * 1024) {
+      setError('Image must be under 4 MB.');
+      e.target.value = '';
+      return;
+    }
+    setError('');
     setFile(f);
     if (f) setPreview(URL.createObjectURL(f));
   };
@@ -74,8 +79,18 @@ export function Create() {
     try {
       let image_urls = existingImages;
       if (file) {
-        const blob = await upload(file.name, file, { access: 'public', handleUploadUrl: '/api/items/upload' });
-        image_urls = [blob.url];
+        const resp = await fetch(`/api/items/upload?filename=${encodeURIComponent(file.name)}`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+        });
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          throw new Error(data.error || 'Image upload failed.');
+        }
+        const { url } = await resp.json();
+        image_urls = [url];
       }
       const body = {
         title: form.title.trim(),
