@@ -26,4 +26,13 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Backend + tooling run on Node, not in the browser, so they use Node
+    // globals (process, Buffer, etc.). Without this, server files report
+    // `no-undef` for those and `npm run lint` is unusable for the API.
+    files: ['server/**/*.js', 'api/**/*.js', '*.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

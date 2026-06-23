@@ -14,6 +14,24 @@ import usersRouter from './routes/users.js';
 export function createApp() {
   const app = express();
 
+  app.disable('x-powered-by'); // don't advertise the framework/stack
+
+  // Security headers for every API response. These are JSON endpoints that
+  // should never load resources or be framed, so the CSP is locked all the way
+  // down. (The static SPA's headers live in vercel.json, since Vercel serves the
+  // HTML directly and bypasses this app.) Set before routes so they apply even
+  // to error responses.
+  app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    }
+    next();
+  });
+
   app.use(express.json());
   app.use(cookieParser());
 
