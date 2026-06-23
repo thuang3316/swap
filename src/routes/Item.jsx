@@ -52,7 +52,8 @@ export function Item() {
         <div>
           <div className="aspect-square bg-surface border border-line rounded-[var(--radius-card)] grid place-items-center overflow-hidden">
             {images.length
-              ? <img src={images[active]} alt={item.title} className="w-full h-full object-contain" />
+              ? <img src={images[active]} alt={item.title} className="w-full h-full object-contain"
+                     fetchPriority="high" decoding="async" />
               : <span className="font-mono text-sm text-ink-soft/50">no photo</span>}
           </div>
           {images.length > 1 && (
@@ -60,7 +61,7 @@ export function Item() {
               {images.map((src, i) => (
                 <button key={src} type="button" onClick={() => setActive(i)}
                         className={`w-16 h-16 rounded-lg overflow-hidden border ${i === active ? 'border-grape' : 'border-line'}`}>
-                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>

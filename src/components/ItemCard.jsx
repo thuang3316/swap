@@ -20,7 +20,7 @@ export function ItemCard({ item }) {
     >
       <div className="aspect-square bg-paper grid place-items-center overflow-hidden">
         {img
-          ? <img src={img} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+          ? <img src={img} alt={item.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
           : <span className="text-ink-soft/40 font-mono text-xs">no photo</span>}
       </div>
       <div className="p-4 flex flex-col gap-3 flex-1">

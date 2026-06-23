@@ -107,7 +107,12 @@ Web-Vitals movers**. Re-measured anyway to confirm no regression:
 | Requests | 1813 → 1814 ms | 1656 | ~0.01 | 99 |
 
 Flat within noise, as expected.
-### 5. Image attributes (optional) — _pending_
+### 5. Image attributes ✅ (commit pending)
+`decoding="async"` on `ItemCard` thumbnails and `Item.jsx` gallery; the main item-detail image gets
+`fetchPriority="high"` (and is not lazy) as it's the LCP element on item pages; gallery thumbnails get
+`loading="lazy"`. **Not measurable on the current dataset** — there's no Blob store, so seeded items
+have empty `image_urls`, and the measured pages (`/`, `/requests`) have no image LCP element. Shipped
+as correct, low-risk future-proofing that takes effect once listings have photos; build clean.
 
 ## Summary
 _(final before/after deltas table — filled at the end)_
