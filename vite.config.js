@@ -15,4 +15,12 @@ export default defineConfig({
       '/api': 'http://localhost:3001',
     },
   },
+  preview: {
+    // `vite preview` serves the production build (used for perf measurement).
+    // It doesn't inherit `server.proxy`, so forward /api to the local dev API
+    // too. Local-only — has no effect on the Vercel build/deploy.
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
 })
