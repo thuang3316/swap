@@ -8,6 +8,22 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Isolate the framework into a stable `vendor` chunk so app-code edits
+        // don't bust its long-lived browser cache across deploys. Scoped to the
+        // framework ONLY — not all of node_modules — so @vercel/blob stays in the
+        // lazy Create chunk instead of being pulled back into the initial load.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (/[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) {
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
   server: {
     // Forward API calls to the local Express dev server (server/dev.js).
     // In production on Vercel, /api/* is served by api/index.js instead.

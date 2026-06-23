@@ -75,7 +75,24 @@ Cumulative vs baseline (includes opt 1):
 
 **Initial JS chunk: 368.49 kB → 250.24 kB (gzip 111.69 → 79.34 kB, −32 kB).** `Create` (100 kB)
 + 6 small route chunks now load on demand. Build clean; all routes verified to resolve.
-### 3. Vendor chunk splitting — _pending_
+### 3. Vendor chunk splitting ✅ (commit pending)
+`build.rollupOptions.output.manualChunks` in `vite.config.js`, scoped to the **framework only**
+(react / react-dom / react-router / scheduler) — deliberately *not* all of `node_modules`, so
+`@vercel/blob` stays in the lazy `Create` chunk instead of being pulled back into the initial load.
+
+Build now emits `vendor` 229.71 kB (gz 73.56) + entry `index` **21.60 kB (gz 6.60)** + the lazy
+route chunks. First-load bytes are ~unchanged (Vite adds `modulepreload` for vendor, so vendor +
+entry load in parallel — no waterfall). The win is **repeat-visit caching**: after an app-code edit,
+the browser re-downloads only the ~22 kB entry, not the whole 250 kB.
+
+First-load metrics (median-of-5 mobile) vs opt 2 — **no change within noise** (as expected):
+
+| Page | LCP | FCP | CLS | score |
+|---|---|---|---|---|
+| Home | 1815 → 1814 ms | 1656 → 1657 | 0.051 | 99 |
+| Requests | 1815 → 1813 ms | 1657 → 1656 | ~0.01 | 99 |
+
+(A single cold Lighthouse run can't capture the caching benefit; verified no first-load regression.)
 ### 4. index.html head hygiene — _pending_
 ### 5. Image attributes (optional) — _pending_
 
