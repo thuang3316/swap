@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { sql } from '../db.js';
 import { issueToken, clearToken, COOKIE, verifyToken } from '../auth.js';
-import { EMAIL_RE, MAX_VERIFY_ATTEMPTS, hashCode, isCommonPassword, createAndSendCode } from '../account.js';
+import { EMAIL_RE, isCommonPassword, createAndSendCode, checkCode } from '../account.js';
 
 const router = Router();
 
@@ -48,30 +48,53 @@ router.post('/verify', asyncH(async (req, res) => {
   const code = (req.body?.code || '').trim();
   if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
 
-  // Look up the newest unexpired code for this email, then compare in-app so we
-  // can count failed guesses and bound brute force (1M codes / 10-min window).
-  const [pending] = await sql`
-    SELECT id, code, attempts FROM email_verifications
-    WHERE email = ${email} AND expires_at > now()
-    ORDER BY created_at DESC LIMIT 1`;
-  if (!pending) return res.status(400).json({ error: 'Invalid or expired code' });
-
-  if (pending.attempts >= MAX_VERIFY_ATTEMPTS) {
-    await sql`DELETE FROM email_verifications WHERE email = ${email}`;
-    return res.status(429).json({ error: 'Too many incorrect attempts — please sign up again to get a new code' });
-  }
-  if (pending.code !== hashCode(code)) {
-    await sql`UPDATE email_verifications SET attempts = attempts + 1 WHERE id = ${pending.id}`;
-    return res.status(400).json({ error: 'Invalid or expired code' });
-  }
+  const check = await checkCode(email, code, 'signup');
+  if (!check.ok) return res.status(check.status).json({ error: check.error });
 
   const [user] = await sql`
     UPDATE users SET email_verified = true WHERE email = ${email}
     RETURNING id, username, email, email_verified, phone`;
   if (!user) return res.status(400).json({ error: 'No account found for that email' });
 
-  await sql`DELETE FROM email_verifications WHERE email = ${email}`;
+  await sql`DELETE FROM email_verifications WHERE email = ${email} AND purpose = 'signup'`;
   issueToken(res, user);
+  res.json({ user: publicUser(user) });
+}));
+
+// POST /api/auth/forgot — email a password-reset code. Always responds 200 with
+// a generic message so it can't be used to probe which emails are registered.
+router.post('/forgot', asyncH(async (req, res) => {
+  const email = (req.body?.email || '').trim();
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Enter a valid email address' });
+
+  // Only send to a real, verified account; respond identically either way.
+  const [user] = await sql`SELECT id, email_verified FROM users WHERE email = ${email}`;
+  if (user && user.email_verified) {
+    await createAndSendCode(email, 'reset');
+  }
+  res.json({ ok: true });
+}));
+
+// POST /api/auth/reset — set a new password using a reset code, then log in.
+router.post('/reset', asyncH(async (req, res) => {
+  const email = (req.body?.email || '').trim();
+  const code = (req.body?.code || '').trim();
+  const password = req.body?.password || '';
+  if (!email || !code) return res.status(400).json({ error: 'Email and code are required' });
+  if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (isCommonPassword(password)) return res.status(400).json({ error: 'That password is too common and appears in known breaches — please choose another' });
+
+  const check = await checkCode(email, code, 'reset');
+  if (!check.ok) return res.status(check.status).json({ error: check.error });
+
+  const password_hash = await bcrypt.hash(password, 12);
+  const [user] = await sql`
+    UPDATE users SET password_hash = ${password_hash} WHERE email = ${email}
+    RETURNING id, username, email, email_verified, phone`;
+  if (!user) return res.status(400).json({ error: 'No account found for that email' });
+
+  await sql`DELETE FROM email_verifications WHERE email = ${email} AND purpose = 'reset'`;
+  issueToken(res, user); // a successful reset also signs them in
   res.json({ user: publicUser(user) });
 }));
 

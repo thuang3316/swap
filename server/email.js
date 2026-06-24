@@ -5,25 +5,33 @@ import { Resend } from 'resend';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-export async function deliverCode(email, code) {
-  // Dev (or any non-prod): log the code to the server console so signup can be
-  // built/tested without an email provider.
+// purpose: 'signup' (verify a new account) or 'reset' (password reset) — only
+// changes the wording of the email; the delivery path is identical.
+export async function deliverCode(email, code, purpose = 'signup') {
+  // Dev (or any non-prod): log the code to the server console so the flows can
+  // be built/tested without an email provider.
   if (!isProd) {
-    console.log(`\n[dev] verification code for ${email}: ${code}\n`);
+    console.log(`\n[dev] ${purpose} code for ${email}: ${code}\n`);
     return;
   }
   // Production must actually send. If the key is missing, fail loudly rather
-  // than silently console-logging and returning 200 (which would make signup
+  // than silently console-logging and returning 200 (which would make the flow
   // look successful while no email is ever delivered).
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not set — cannot send verification email in production.');
   }
+  const subject =
+    purpose === 'reset' ? 'Reset your Swap password' : 'Your Swap verification code';
+  const intro =
+    purpose === 'reset'
+      ? 'Use this code to reset your Swap password'
+      : 'Your verification code';
   const resend = new Resend(process.env.RESEND_API_KEY);
   await resend.emails.send({
     from: 'Swap <onboarding@resend.dev>', // replace with a verified domain before prod
     to: email,
-    subject: 'Your Swap verification code',
-    html: `<p>Your verification code is <strong style="font-size:20px">${code}</strong>.</p>
-           <p>It expires in 10 minutes.</p>`,
+    subject,
+    html: `<p>${intro}: <strong style="font-size:20px">${code}</strong>.</p>
+           <p>It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>`,
   });
 }

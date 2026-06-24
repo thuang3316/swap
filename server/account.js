@@ -23,11 +23,35 @@ const COMMON_PASSWORDS = new Set([
 ]);
 export const isCommonPassword = (pw) => COMMON_PASSWORDS.has(pw.toLowerCase());
 
-// Issue a fresh verification code for an email and deliver it. In dev (or with
-// no RESEND_API_KEY) deliverCode just logs the code to the server console.
-export async function createAndSendCode(email) {
+// Issue a fresh code for an email and deliver it. `purpose` is 'signup' (verify
+// a new account) or 'reset' (password reset) — kept separate so the two flows
+// never consume each other's codes. In dev (or with no RESEND_API_KEY)
+// deliverCode just logs the code to the server console.
+export async function createAndSendCode(email, purpose = 'signup') {
   const code = genCode();
   const expires = new Date(Date.now() + CODE_TTL_MS);
-  await sql`INSERT INTO email_verifications (email, code, expires_at) VALUES (${email}, ${hashCode(code)}, ${expires})`;
-  await deliverCode(email, code);
+  await sql`INSERT INTO email_verifications (email, code, expires_at, purpose) VALUES (${email}, ${hashCode(code)}, ${expires}, ${purpose})`;
+  await deliverCode(email, code, purpose);
+}
+
+// Check a submitted code against the newest unexpired code for (email, purpose),
+// bounding brute force. Shared by /verify and /reset so both stay in sync.
+// Returns { ok: true } when it matches (the caller performs its action and
+// should then delete the consumed codes), or { ok: false, status, error }.
+export async function checkCode(email, code, purpose) {
+  const [pending] = await sql`
+    SELECT id, code, attempts FROM email_verifications
+    WHERE email = ${email} AND purpose = ${purpose} AND expires_at > now()
+    ORDER BY created_at DESC LIMIT 1`;
+  if (!pending) return { ok: false, status: 400, error: 'Invalid or expired code' };
+
+  if (pending.attempts >= MAX_VERIFY_ATTEMPTS) {
+    await sql`DELETE FROM email_verifications WHERE email = ${email} AND purpose = ${purpose}`;
+    return { ok: false, status: 429, error: 'Too many incorrect attempts — please request a new code' };
+  }
+  if (pending.code !== hashCode(code)) {
+    await sql`UPDATE email_verifications SET attempts = attempts + 1 WHERE id = ${pending.id}`;
+    return { ok: false, status: 400, error: 'Invalid or expired code' };
+  }
+  return { ok: true };
 }

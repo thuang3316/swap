@@ -16,6 +16,7 @@ import { PublicProfile } from '../routes/PublicProfile.jsx';
 const lazyRoute = (loader, name) => lazy(() => loader().then((m) => ({ default: m[name] })));
 const Login = lazyRoute(() => import('../routes/Login.jsx'), 'Login');
 const Signup = lazyRoute(() => import('../routes/Signup.jsx'), 'Signup');
+const ForgotPassword = lazyRoute(() => import('../routes/ForgotPassword.jsx'), 'ForgotPassword');
 const Create = lazyRoute(() => import('../routes/Create.jsx'), 'Create');
 const Profile = lazyRoute(() => import('../routes/Profile.jsx'), 'Profile');
 const EditProfile = lazyRoute(() => import('../routes/EditProfile.jsx'), 'EditProfile');
@@ -37,6 +38,7 @@ export function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/create" element={<Create />} />
               <Route path="/item/:id" element={<Item />} />
               <Route path="/item/:id/edit" element={<Create />} />

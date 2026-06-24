@@ -53,6 +53,9 @@ export function Login() {
           <label className="label" htmlFor="password">Password</label>
           <input id="password" className="input" type="password" autoComplete="current-password"
                  value={form.password} onChange={update('password')} placeholder="••••••••" />
+          <p className="text-sm text-ink-soft mt-2 text-right">
+            <Link to="/forgot-password" className="text-grape font-semibold">Forgot password?</Link>
+          </p>
         </div>
 
         <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
