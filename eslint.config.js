@@ -35,4 +35,27 @@ export default defineConfig([
       globals: globals.node,
     },
   },
+  {
+    // Test files: Vitest globals (`globals: true` in vitest.config.js) + Node.
+    // Also relax the react-refresh rule, which only matters for HMR of component
+    // modules, not tests.
+    files: ['**/*.test.{js,jsx}', 'tests/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
+    },
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
