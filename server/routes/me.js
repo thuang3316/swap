@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { sql } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { issueToken } from '../auth.js';
+import { issueToken, clearToken } from '../auth.js';
 import { EMAIL_RE, isCommonPassword, createAndSendCode } from '../account.js';
 
 // Everything under /api/me is private to the signed-in user.
@@ -104,6 +104,22 @@ router.patch('/profile', asyncH(async (req, res) => {
   // Re-issue the cookie so the token's username stays in sync after a change.
   issueToken(res, user);
   res.json({ user: publicUser(user), emailChanged });
+}));
+
+// DELETE /api/me — permanently close the account. Requires the current password
+// as a re-auth check. The users-row delete CASCADEs to items + requests; the
+// email_verifications rows (keyed by email, not FK) are removed explicitly.
+router.delete('/', asyncH(async (req, res) => {
+  const password = req.body?.password || '';
+  const [me] = await sql`SELECT id, email, password_hash FROM users WHERE id = ${req.user.id}`;
+  if (!me) return res.status(401).json({ error: 'Not authenticated' });
+  if (!(await bcrypt.compare(password, me.password_hash))) {
+    return res.status(400).json({ error: 'Password is incorrect' });
+  }
+  await sql`DELETE FROM users WHERE id = ${req.user.id}`;            // CASCADE → items, requests
+  await sql`DELETE FROM email_verifications WHERE email = ${me.email}`;
+  clearToken(res);
+  res.json({ ok: true });
 }));
 
 export default router;

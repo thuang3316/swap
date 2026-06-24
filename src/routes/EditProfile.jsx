@@ -17,6 +17,12 @@ export function EditProfile() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Danger zone: account deletion. Re-auth with the current password.
+  const [showDelete, setShowDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   // Prefill from the signed-in user once it loads.
   useEffect(() => {
     if (user) setForm((f) => ({ ...f, username: user.username, email: user.email, phone: user.phone || '' }));
@@ -67,6 +73,21 @@ export function EditProfile() {
       setError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const deleteAccount = async (e) => {
+    e.preventDefault();
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await api('/me', { method: 'DELETE', body: { password: deletePassword } });
+      setUser(null); // cookie was cleared server-side; clear the client mirror too
+      navigate('/', { replace: true });
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -170,6 +191,40 @@ export function EditProfile() {
           <Link to="/profile" className="btn btn-ghost">Cancel</Link>
         </div>
       </form>
+
+      {/* Danger zone — irreversible account deletion. */}
+      <div className="mt-10 border border-sold/40 rounded-[var(--radius-card)] p-6 sm:p-8">
+        <span className="eyebrow text-sold">Danger zone</span>
+        <h2 className="text-2xl mt-2 mb-2">Delete account</h2>
+        <p className="text-sm text-ink-soft mb-5">
+          This permanently deletes your account and all your listings and requests. This can&rsquo;t be undone.
+        </p>
+
+        {!showDelete ? (
+          <button type="button" className="btn btn-ghost text-sold" onClick={() => setShowDelete(true)}>
+            Delete account
+          </button>
+        ) : (
+          <form className="flex flex-col gap-4" onSubmit={deleteAccount} noValidate>
+            {deleteError && <p className="field-error">{deleteError}</p>}
+            <div>
+              <label className="label" htmlFor="delete_password">Confirm your password</label>
+              <input id="delete_password" className="input" type="password" value={deletePassword}
+                     onChange={(e) => setDeletePassword(e.target.value)} autoComplete="current-password"
+                     placeholder="Enter your password to confirm" />
+            </div>
+            <div className="flex gap-3">
+              <button type="submit" className="btn btn-primary bg-sold border-sold" disabled={deleting}>
+                {deleting ? 'Deleting…' : 'Permanently delete account'}
+              </button>
+              <button type="button" className="btn btn-ghost"
+                      onClick={() => { setShowDelete(false); setDeletePassword(''); setDeleteError(''); }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

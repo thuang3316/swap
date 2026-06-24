@@ -78,3 +78,48 @@ describe('PATCH /api/me/profile', () => {
     expect(res.body.error).toMatch(/no changes/i);
   });
 });
+
+describe('DELETE /api/me', () => {
+  it('returns 401 when not authenticated', async () => {
+    await request(app).delete('/api/me').send({ password: 'whatever' }).expect(401);
+  });
+
+  it('returns 400 and keeps the account when the password is wrong', async () => {
+    const me = await registerVerifiedUser();
+    const res = await me.agent.delete('/api/me').send({ password: 'not-my-password' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/password is incorrect/i);
+    // Still signed in / account intact.
+    const after = await me.agent.get('/api/auth/me');
+    expect(after.body.user).toMatchObject({ username: me.username });
+  });
+
+  it('deletes the account and cascades the user\'s items and requests', async () => {
+    const me = await registerVerifiedUser();
+    const itemId = (await me.agent.post('/api/items').send({ title: 'My Lamp', category: 'home', price: 12 })).body.id;
+    await me.agent.post('/api/requests').send({ title: 'Want a chair', category: 'furniture' }).expect(201);
+
+    await me.agent.delete('/api/me').send({ password: me.password }).expect(200);
+
+    // Session cleared.
+    const meRes = await me.agent.get('/api/auth/me');
+    expect(meRes.body.user).toBeNull();
+    // Item gone (cascade).
+    await request(app).get(`/api/items/${itemId}`).expect(404);
+    // Request gone from the public feed (cascade).
+    const feed = await request(app).get('/api/requests');
+    expect(feed.body.requests).toEqual([]);
+  });
+
+  it('leaves other users\' data intact', async () => {
+    const me = await registerVerifiedUser();
+    const other = await registerVerifiedUser();
+    const otherItemId = (await other.agent.post('/api/items').send({ title: 'Their Bike', category: 'bikes', price: 80 })).body.id;
+
+    await me.agent.delete('/api/me').send({ password: me.password }).expect(200);
+
+    const res = await request(app).get(`/api/items/${otherItemId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.item).toMatchObject({ title: 'Their Bike' });
+  });
+});
