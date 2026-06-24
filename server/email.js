@@ -5,6 +5,12 @@ import { Resend } from 'resend';
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// The verified sender. Must be an address on a domain you've verified in Resend
+// (e.g. "Swap <noreply@mail.hereweswap.com>"). Set EMAIL_FROM in prod; the
+// resend.dev fallback only delivers to the Resend account owner, so it's for
+// local/testing only.
+const FROM = process.env.EMAIL_FROM || 'Swap <onboarding@resend.dev>';
+
 // purpose: 'signup' (verify a new account) or 'reset' (password reset) — only
 // changes the wording of the email; the delivery path is identical.
 export async function deliverCode(email, code, purpose = 'signup') {
@@ -28,7 +34,7 @@ export async function deliverCode(email, code, purpose = 'signup') {
       : 'Your verification code';
   const resend = new Resend(process.env.RESEND_API_KEY);
   await resend.emails.send({
-    from: 'Swap <onboarding@resend.dev>', // replace with a verified domain before prod
+    from: FROM,
     to: email,
     subject,
     html: `<p>${intro}: <strong style="font-size:20px">${code}</strong>.</p>

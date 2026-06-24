@@ -41,4 +41,11 @@ export function validateEnv() {
         'verification emails cannot be sent and signup will fail.'
     );
   }
+  if (isProd && !process.env.EMAIL_FROM) {
+    console.error(
+      '[env] WARNING: EMAIL_FROM is not set in production — falling back to ' +
+        'onboarding@resend.dev, which only delivers to the Resend account owner. ' +
+        'Set it to an address on your verified domain (e.g. noreply@mail.hereweswap.com).'
+    );
+  }
 }
