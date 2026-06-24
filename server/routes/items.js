@@ -100,7 +100,7 @@ router.post('/upload', uploadLimit, requireAuth, express.raw({ type: () => true,
     return res.status(400).json({ error: 'No image received' });
   }
   // Sanitize the client-supplied filename; addRandomSuffix avoids collisions.
-  const filename = String(req.query.filename || 'photo').replace(/[^\w.\-]/g, '_').slice(0, 100) || 'photo';
+  const filename = String(req.query.filename || 'photo').replace(/[^\w.-]/g, '_').slice(0, 100) || 'photo';
   const blob = await put(filename, req.body, { access: 'public', addRandomSuffix: true, contentType });
   res.json({ url: blob.url });
 }));

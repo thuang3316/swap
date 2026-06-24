@@ -1,0 +1,46 @@
+name: CI
+
+# Pre-deploy gate: lint + build + tests must pass. Protect `main` with these
+# checks (Settings → Branches) so unverified code can't merge/deploy.
+# The E2E layer is intentionally NOT here — it runs nightly/on-label (see
+# guides/testing.md).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Lint, build, unit + frontend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:unit
+
+  api:
+    name: API integration tests
+    runs-on: ubuntu-latest
+    needs: checks
+    # Serialize jobs that hit the shared Neon test branch so their
+    # TRUNCATE-between-tests can't race a concurrent run.
+    concurrency:
+      group: neon-test-branch
+      cancel-in-progress: false
+    env:
+      TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate:test   # idempotent (IF NOT EXISTS)
+      - run: npm run test:api

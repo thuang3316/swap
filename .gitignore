@@ -17,6 +17,11 @@ screenshots
 # Performance: keep reports/performance-report.md, ignore raw measurement artifacts
 reports/artifacts/
 
+# Test artifacts (.env.test is already covered by .env.* above)
+coverage
+playwright-report
+test-results
+
 # Env / secrets
 .env
 .env.*

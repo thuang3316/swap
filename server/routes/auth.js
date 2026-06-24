@@ -44,12 +44,10 @@ router.post('/signup', signupLimit, asyncH(async (req, res) => {
               AND (email = ${email} OR username = ${username})`;
   await sql`DELETE FROM email_verifications WHERE email = ${email}`;
 
-  let user;
   try {
-    [user] = await sql`
+    await sql`
       INSERT INTO users (username, email, password_hash, phone)
-      VALUES (${username}, ${email}, ${password_hash}, ${phone})
-      RETURNING id, email`;
+      VALUES (${username}, ${email}, ${password_hash}, ${phone})`;
   } catch (err) {
     if (err.code === '23505' || /duplicate|unique/i.test(err.message || '')) {
       return res.status(409).json({ error: 'That email or username is already registered' });
