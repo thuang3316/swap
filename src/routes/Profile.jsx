@@ -9,7 +9,9 @@ function MyItemRow({ item, onChanged }) {
   const [busy, setBusy] = useState(false);
   const img = item.image_urls?.[0];
 
-  const act = async (fn) => { setBusy(true); try { await fn(); await onChanged(); } catch (e) { alert(e.message); } finally { setBusy(false); } };
+  // On an expired session the api layer already redirects to login, so don't
+  // also pop a redundant "Not authenticated" alert.
+  const act = async (fn) => { setBusy(true); try { await fn(); await onChanged(); } catch (e) { if (!e.sessionExpired) alert(e.message); } finally { setBusy(false); } };
   const toggleSold = () => act(() => api(`/items/${item.id}`, { method: 'PATCH', body: { status: item.status === 'sold' ? 'available' : 'sold' } }));
   const remove = () => { if (confirm(`Delete “${item.title}”? This can't be undone.`)) act(() => api(`/items/${item.id}`, { method: 'DELETE' })); };
 

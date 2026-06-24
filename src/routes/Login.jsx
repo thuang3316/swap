@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 
 export function Login() {
   const { setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Set when we bounced the user here from a protected page (see RequireAuth /
+  // the 401 handler in auth.jsx). Only "expired" if they actually had a session.
+  const expired = Boolean(location.state?.expired);
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +45,9 @@ export function Login() {
         <span className="eyebrow">Welcome back</span>
         <h1 className="text-3xl mt-2 mb-6">Sign in</h1>
 
+        {expired && !error && (
+          <p className="form-note mb-4">Your session expired. Please sign in again to continue.</p>
+        )}
         {error && <p className="field-error mb-4">{error}</p>}
 
         <div className="mb-4">

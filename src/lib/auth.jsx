@@ -2,13 +2,18 @@
 // signed in, and exposes helpers to refresh/log out. The server cookie is the
 // real source of truth — this is just a client-side mirror for the UI.
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { api } from './api.js';
+import { useNavigate } from 'react-router-dom';
+import { api, setUnauthorizedHandler } from './api.js';
 
 const AuthContext = createContext(null);
+
+// Paths where a "your session expired" redirect would be pointless or looping.
+const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const refresh = useCallback(async () => {
     try {
@@ -22,6 +27,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // The cookie is httpOnly, so the UI can't see when it expires — our `user`
+  // mirror goes stale and the app looks signed-in until a hard refresh. When any
+  // protected call 401s, treat the session as gone: clear the mirror and send
+  // the user to login with a clear explanation (unless we're already there).
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      if (!AUTH_PATHS.includes(window.location.pathname)) {
+        navigate('/login', { replace: true, state: { expired: true } });
+      }
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [navigate]);
 
   const logout = useCallback(async () => {
     try { await api('/auth/logout', { method: 'POST' }); } finally { setUser(null); }

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../lib/auth.jsx';
 import { Nav } from './Nav.jsx';
+import { RequireAuth } from './RequireAuth.jsx';
 // Deep-linkable, shareable CONTENT pages stay in the main chunk so a cold direct
 // load isn't delayed by a second round trip to fetch the route chunk (that hurts
 // their LCP). Home/Requests/Item/PublicProfile are the content surfaces.
@@ -39,13 +40,13 @@ export function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/create" element={<Create />} />
+              <Route path="/create" element={<RequireAuth><Create /></RequireAuth>} />
               <Route path="/item/:id" element={<Item />} />
-              <Route path="/item/:id/edit" element={<Create />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/edit" element={<EditProfile />} />
+              <Route path="/item/:id/edit" element={<RequireAuth><Create /></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+              <Route path="/profile/edit" element={<RequireAuth><EditProfile /></RequireAuth>} />
               <Route path="/u/:username" element={<PublicProfile />} />
-              <Route path="/make-request" element={<MakeRequest />} />
+              <Route path="/make-request" element={<RequireAuth><MakeRequest /></RequireAuth>} />
               <Route path="/requests" element={<Requests />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
